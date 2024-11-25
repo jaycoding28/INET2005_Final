@@ -30,23 +30,60 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/purchase', async (req, res) => {
-    const { product_id, customer_id, quantity } = req.body;
+    
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'Must be logged in to make a purchase' });
+    }
 
-    if (!product_id || !customer_id || !quantity) {
+    const { 
+        street, city, province, country, postal_code,
+        credit_card, credit_expire, credit_cvv,
+        cart, invoice_amt, invoice_tax, invoice_total 
+    } = req.body;
+
+    
+    if (!street || !city || !province || !country || !postal_code ||
+        !credit_card || !credit_expire || !credit_cvv ||
+        !cart || !invoice_amt || !invoice_tax || !invoice_total) {
         return res.status(400).json({ error: 'All fields are required' });
     }
 
     try {
-        const product = await prisma.product.findUnique({
-            where: { product_id: Number(product_id) }, 
+        
+        const purchase = await prisma.purchase.create({
+            data: {
+                customer_id: req.session.user.customer_id,
+                street,
+                city,
+                province,
+                country,
+                postal_code,
+                credit_card,
+                credit_expire,
+                credit_cvv,
+                invoice_amt,
+                invoice_tax,
+                invoice_total,
+                items: {
+                    create: cart.split(',').map(productId => {
+                        const quantity = cart.split(',').filter(id => id === productId).length;
+                        return {
+                            product_id: parseInt(productId),
+                            quantity: quantity
+                        };
+                    }).filter((item, index, self) => 
+                        index === self.findIndex(t => t.product_id === item.product_id)
+                    )
+                }
+            },
+            include: {
+                items: true
+            }
         });
 
-        if (!product) {
-            return res.status(404).json({ error: 'Product not found' });
-        }
-
         res.status(200).json({
-            message: `Purchase successful for ${quantity} units of ${product.name}`,
+            message: 'Purchase successful',
+            purchase
         });
     } catch (error) {
         console.error('Error in /purchase:', error);
@@ -54,11 +91,8 @@ router.post('/purchase', async (req, res) => {
     }
 });
 
-
 module.exports = router;
 
 
-// References:
-// RESTful API design: https://restfulapi.net/
-// Prisma CRUD operations: https://www.prisma.io/docs/concepts/components/prisma-client/crud
-// Express routing params: https://expressjs.com/en/guide/routing.html#route-parameters
+// Reference: https://www.prisma.io/docs/reference/api-reference/prisma-client-reference (Prisma Client API)
+// Reference: https://expressjs.com/en/guide/routing.html (Routing in Express)

@@ -2,15 +2,31 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const { body, validationResult } = require('express-validator');
 const { PrismaClient } = require('@prisma/client');
+const passwordValidator = require('password-validator');
 
 const router = express.Router();
 const prisma = new PrismaClient();
+
+
+const schema = new passwordValidator();
+schema
+    .is().min(8)
+    .has().uppercase()
+    .has().lowercase()
+    .has().digits();
 
 router.post('/signup', async (req, res) => {
     const { email, password, first_name, last_name } = req.body;
 
     if (!email || !password || !first_name || !last_name) {
         return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    
+    if (!schema.validate(password)) {
+        return res.status(400).json({ 
+            error: 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number' 
+        });
     }
 
     try {
@@ -23,8 +39,6 @@ router.post('/signup', async (req, res) => {
         res.status(500).json({ error: 'Error creating user' });
     }
 });
-
-
 
 router.post(
     '/login',
@@ -41,7 +55,16 @@ router.post(
             if (!user || !(await bcrypt.compare(password, user.password))) {
                 return res.status(401).json({ error: 'Invalid email or password' });
             }
-            res.status(200).json({ message: 'Login successful', email: user.email });
+            
+            
+            req.session.user = {
+                customer_id: user.customer_id,
+                email: user.email,
+                first_name: user.first_name,
+                last_name: user.last_name
+            };
+            
+            res.status(200).json({ message: 'Login successful', user: req.session.user });
         } catch (err) {
             res.status(500).json({ error: 'Error logging in' });
         }
@@ -49,18 +72,24 @@ router.post(
 );
 
 router.post('/logout', (req, res) => {
-    res.send('Logout endpoint - Implement logic here');
+    req.session.destroy(err => {
+        if (err) {
+            return res.status(500).json({ error: 'Could not log out' });
+        }
+        res.status(200).json({ message: 'Logged out successfully' });
+    });
 });
 
 router.get('/getSession', (req, res) => {
-    res.send('Get session endpoint - Implement logic here');
+    if (req.session.user) {
+        res.status(200).json(req.session.user);
+    } else {
+        res.status(401).json({ error: 'Not logged in' });
+    }
 });
 
 module.exports = router;
 
-
-// References:
-// Express routing guide: https://expressjs.com/en/guide/routing.html  
-// Bcrypt npm docs: https://www.npmjs.com/package/bcrypt
-// Express-validator docs: https://express-validator.github.io/docs/
-// Prisma Client docs: https://www.prisma.io/docs/concepts/components/prisma-client
+// Reference: https://express-validator.github.io/docs (Express Validator)
+// Reference: https://www.npmjs.com/package/password-validator (Password Validator)
+// Reference: https://www.prisma.io/docs/reference/api-reference/prisma-client-reference (Prisma Client API)
