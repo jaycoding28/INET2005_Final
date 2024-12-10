@@ -10,6 +10,9 @@ import Logout from './pages/Logout';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Confirmation from './pages/Confirmation';
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import './index.css';
 
 const router = createBrowserRouter([
   {
@@ -17,7 +20,7 @@ const router = createBrowserRouter([
     element: <App />,
     children: [
       { path: '/', element: <Home /> },
-      { path: '/details/:id', element: <Details /> }, // Correctly capturing the product ID
+      { path: '/details/:id', element: <Details /> },
       { path: '/signup', element: <Signup /> },
       { path: '/login', element: <Login /> },
       { path: '/logout', element: <Logout /> },

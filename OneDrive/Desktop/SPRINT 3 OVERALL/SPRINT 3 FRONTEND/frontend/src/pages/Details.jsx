@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import Cookies from 'js-cookie';
 
 function Details() {
   const { id } = useParams();
@@ -9,34 +10,42 @@ function Details() {
   useEffect(() => {
     fetch(`${import.meta.env.VITE_APP_HOST}/products/${id}`)
       .then((res) => res.json())
-      .then((data) => {
-        setProduct(data.product);
-      });
+      .then((data) => setProduct(data.product))
+      .catch((err) => console.error(err));
   }, [id]);
 
   const addToCart = () => {
-    const cartCookie = document.cookie.includes('cart=') 
-      ? document.cookie.split('cart=')[1].split(';')[0].split(',')
-      : [];
-    cartCookie.push(id);
-    document.cookie = `cart=${cartCookie.join(',')}`;
+    const cartCookie = Cookies.get('cart');
+    const items = cartCookie ? cartCookie.split(',').filter(Boolean) : [];
+    items.push(id);
+    Cookies.set('cart', items.join(','));
     navigate('/cart');
   };
 
   if (!product) return <p>Loading...</p>;
 
   return (
-    <div>
-      <img
-        src={`${import.meta.env.VITE_APP_HOST}/${product.image_filename}`}
-        alt={product.name}
-        style={{ width: "300px", height: "300px" }}
-      />
-      <h2>{product.name}</h2>
-      <p>{product.description}</p>
-      <p>Price: ${product.cost}</p>
-      <button onClick={addToCart}>Add to Cart</button>
-      <button onClick={() => navigate("/")}>Go Back</button>
+    <div className="container mt-4">
+      <div className="row">
+        <div className="col-md-6">
+          <img
+            src={`${import.meta.env.VITE_APP_HOST}/${product.image_filename}`}
+            alt={product.name}
+            className="img-fluid rounded shadow-sm"
+          />
+        </div>
+        <div className="col-md-6">
+          <h2>{product.name}</h2>
+          <p>{product.description}</p>
+          <p className="fs-4 fw-bold">${product.cost}</p>
+          <button className="btn btn-success me-2" onClick={addToCart}>
+            Add to Cart
+          </button>
+          <button className="btn btn-secondary" onClick={() => navigate('/')}>
+            Go Back
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
